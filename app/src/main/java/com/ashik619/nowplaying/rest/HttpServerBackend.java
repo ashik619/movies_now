@@ -31,7 +31,7 @@ public class HttpServerBackend {
             call.enqueue(new Callback<JsonObject>() {
                 @Override
                 public void onResponse(Call<JsonObject> call, Response<JsonObject> response) {
-
+                    Log.e("Response_", response.code() + "");
                     if (response.code() == 200 || response.code() == 201) {
 
                         try {
@@ -59,16 +59,10 @@ public class HttpServerBackend {
                     //handleIt
 
                     back.onReturn(false, null, 404);
-                    try {
-                        Log.i("Response_", t.toString() + "");
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
                 }
             });
         } else {
-            System.out.println("No internet");
-            back.onReturn(false,null,-50);
+            back.onReturn(false,null,404);
         }
     }
 

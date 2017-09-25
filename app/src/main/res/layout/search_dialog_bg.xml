@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="60dp"
+    android:paddingLeft="10dp"
+    android:paddingRight="10dp"
+    android:id="@+id/popup_element"
+    android:background="@drawable/search_bg">
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/searchText"
+        android:hint="Search.."
+        android:inputType="textPersonName"
+        android:background="@android:color/transparent"
+        android:layout_centerInParent="true"
+        android:gravity="center"
+        android:imeOptions="actionSearch"
+        android:textColor="@color/colorPrimary"
+        android:textColorHint="@color/colorPrimary"
+        android:layout_below="@+id/textView2"/>
+
+</RelativeLayout>

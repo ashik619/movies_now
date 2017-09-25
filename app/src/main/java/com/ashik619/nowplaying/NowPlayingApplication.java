@@ -3,6 +3,7 @@ package com.ashik619.nowplaying;
 import android.app.Application;
 
 import com.ashik619.nowplaying.helper.PrefHandler;
+import com.google.firebase.FirebaseApp;
 import com.google.firebase.database.FirebaseDatabase;
 
 /**
@@ -17,7 +18,7 @@ public class NowPlayingApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-
+        FirebaseApp.initializeApp(getApplicationContext());
         if (localStorageHandler == null) {
             localStorageHandler = new PrefHandler(getApplicationContext());
         }

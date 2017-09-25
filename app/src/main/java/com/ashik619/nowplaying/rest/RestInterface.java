@@ -17,6 +17,9 @@ public interface RestInterface {
     @GET("movie/now_playing")
     Call<JsonObject> getNowPlaying(@Query("api_key") String api_key,@Query("language") String language,@Query("page") String page);
 
+    @GET("search/movie")
+    Call<JsonObject> search(@Query("api_key") String api_key,@Query("language") String language,@Query("page") String page,@Query("query") String query);
+
     @GET("configuration")
     Call<JsonObject> getConfiguration(@Query("api_key") String api_key);
 
