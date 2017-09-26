@@ -26,6 +26,7 @@ import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.splunk.mint.Mint;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -49,6 +50,7 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Mint.initAndStartSession(this.getApplication(), "5c1dbf76");
         setContentView(R.layout.activity_chat);
         ButterKnife.bind(this);
         Intent intent = getIntent();
@@ -71,7 +73,6 @@ public class ChatActivity extends AppCompatActivity {
             @Override
             public void onChanged() {
                 super.onChanged();
-                Log.e("CHAT","data changed");
                 listViewChat.post(new Runnable(){
                     public void run() {
                         listViewChat.setSelection(listViewChat.getCount() - 1);

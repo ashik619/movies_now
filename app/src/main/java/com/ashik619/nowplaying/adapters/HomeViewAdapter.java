@@ -32,6 +32,7 @@ public class HomeViewAdapter extends RecyclerView.Adapter<HomeViewHolder>
         this.context = context;
         this.imageBaseUrl = imageBaseUrl;
         this.imageSize = imageSize;
+        this.setHasStableIds(true);
     }
 
     @Override
@@ -49,7 +50,6 @@ public class HomeViewAdapter extends RecyclerView.Adapter<HomeViewHolder>
         holder.movieName.setText(movieArrayList.get(position).name);
         if(movieArrayList.get(position).posterUrl != null) {
             String imageurl = imageBaseUrl + imageSize + movieArrayList.get(position).posterUrl;
-            //Log.e("adap",imageurl);
             Picasso.with(context)
                     .load(imageurl)
                     .into(holder.posterView);
@@ -57,8 +57,16 @@ public class HomeViewAdapter extends RecyclerView.Adapter<HomeViewHolder>
     }
 
     @Override
-    public int getItemCount()
-    {
+    public int getItemCount() {
         return this.movieArrayList.size();
+    }
+
+    @Override
+    public long getItemId(int position) {
+        return super.getItemId(position);
+    }
+
+    public void setMovieArrayList(ArrayList<Movie> movieArrayList){
+        this.movieArrayList = movieArrayList;
     }
 }

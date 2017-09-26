@@ -17,9 +17,7 @@ import java.util.ArrayList;
 /**
  * Created by ashik619 on 23-05-2017.
  */
-public class HomeViewHolder extends RecyclerView.ViewHolder implements
-        View.OnClickListener
-{
+public class HomeViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
     public TextView movieName;
     public ImageView posterView;
     Context context;

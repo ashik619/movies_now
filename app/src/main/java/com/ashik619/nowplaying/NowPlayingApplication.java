@@ -5,6 +5,7 @@ import android.app.Application;
 import com.ashik619.nowplaying.helper.PrefHandler;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.database.FirebaseDatabase;
+import com.onesignal.OneSignal;
 
 /**
  * Created by ashik619 on 23-05-2017.
@@ -23,6 +24,10 @@ public class NowPlayingApplication extends Application {
             localStorageHandler = new PrefHandler(getApplicationContext());
         }
         FirebaseDatabase.getInstance().setPersistenceEnabled(true);
+        OneSignal.startInit(this)
+                .inFocusDisplaying(OneSignal.OSInFocusDisplayOption.Notification)
+                .unsubscribeWhenNotificationsAreDisabled(true)
+                .init();
 
     }
 }

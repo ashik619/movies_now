@@ -8,102 +8,88 @@ import android.os.Handler;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
+
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.StaggeredGridLayoutManager;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.Window;
 import android.view.inputmethod.EditorInfo;
-import android.widget.Button;
+
 import android.widget.EditText;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import com.arasthel.spannedgridlayoutmanager.SpannedGridLayoutManager;
 import com.ashik619.nowplaying.adapters.HomeViewAdapter;
 import com.ashik619.nowplaying.models.Movie;
-import com.ashik619.nowplaying.rest.HttpServerBackend;
 import com.ashik619.nowplaying.rest.RestAdapter;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
-import com.marshalchen.ultimaterecyclerview.UltimateRecyclerView;
+import com.splunk.mint.Mint;
+
 
 import java.util.ArrayList;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity {
-    ArrayList<Movie> moviesList;
+    private ArrayList<Movie> moviesList;
+    private ArrayList<Movie> searchList;
     @BindView(R.id.recycler_view)
-    UltimateRecyclerView recyclerView;
+    RecyclerView recyclerView;
     @BindView(R.id.loadingLayout)
     RelativeLayout loadingLayout;
     @BindView(R.id.fab)
     FloatingActionButton floatingActionButton;
-    StaggeredGridLayoutManager _sGridLayoutManager;
+
+
     HomeViewAdapter rcAdapter;
     private int currentPage = 1;
     private boolean isLoadMore = false;
     private int totalPages = 0;
     private boolean isSearch = false;
+    private Call<JsonObject> getMoviesCall;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Mint.initAndStartSession(this.getApplication(), "5c1dbf76");
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
         moviesList = new ArrayList<Movie>();
+        searchList = new ArrayList<>();
         recyclerView.setHasFixedSize(true);
-        _sGridLayoutManager = new StaggeredGridLayoutManager(3,
-                StaggeredGridLayoutManager.VERTICAL);
-        recyclerView.setLayoutManager(_sGridLayoutManager);
-        recyclerView.enableLoadmore();
-        recyclerView.setOnLoadMoreListener(new UltimateRecyclerView.OnLoadMoreListener() {
-            @Override
-            public void loadMore(int itemsCount, final int maxLastVisiblePosition) {
-                Handler handler = new Handler();
-                handler.postDelayed(new Runnable() {
-                    public void run() {
-                        if(!isSearch) {
-                            if (!isLoadMore) {
-                                isLoadMore = true;
-                                if (currentPage <= totalPages) {
-                                    getMoviesListApiCall(currentPage);
-                                }
-                            }
-                        }
-                    }
-                }, 1000);
-                
-            }
-        });
+        SpannedGridLayoutManager spannedGridLayoutManager = new SpannedGridLayoutManager(
+                SpannedGridLayoutManager.Orientation.VERTICAL, 3);
+        //recyclerView.setLayoutManager(spannedGridLayoutManager);
+        recyclerView.setLayoutManager(new StaggeredGridLayoutManager(3,StaggeredGridLayoutManager.VERTICAL));
         getConfiguratonaApi();
     }
 
     void getConfiguratonaApi() {
         Call<JsonObject> call = new RestAdapter().getRestInterface().getConfiguration(Constants.API_KEY);
-        new HttpServerBackend(MainActivity.this).getData(call, new HttpServerBackend.ResponseListener() {
+        call.enqueue(new Callback<JsonObject>() {
             @Override
-            public void onReturn(boolean success, JsonObject data, int message) {
-                super.onReturn(success, data, message);
-                if (success) {
-                    JsonObject images = data.get("images").getAsJsonObject();
+            public void onResponse(Call<JsonObject> call, Response<JsonObject> response) {
+                if(response.isSuccessful()){
+                    JsonObject images = response.body().get("images").getAsJsonObject();
                     NowPlayingApplication.getLocalPrefInstance().setImageBaseUrl(images.get("base_url").getAsString());
                     NowPlayingApplication.getLocalPrefInstance().setImageSize(images.get("poster_sizes").getAsJsonArray().get(1).getAsString());
                     NowPlayingApplication.getLocalPrefInstance().setLargeImageSize(images.get("poster_sizes").getAsJsonArray().get(3).getAsString());
                     initializeRecyclerView();
-                    floatingActionButton.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View view) {
-                            showSearchDialog();
-                        }
-                    });
-                    getMoviesListApiCall(currentPage);
-                } else {
-                    showSnackBar();
-                }
+                }else showSnackBar();
+            }
+
+            @Override
+            public void onFailure(Call<JsonObject> call, Throwable t) {
+                showSnackBar();
             }
         });
     }
@@ -112,38 +98,65 @@ public class MainActivity extends AppCompatActivity {
                 MainActivity.this, moviesList,NowPlayingApplication.getLocalPrefInstance().getImageBaseUrl(),
                 NowPlayingApplication.getLocalPrefInstance().getImageSize());
         recyclerView.setAdapter(rcAdapter);
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                if (!recyclerView.canScrollVertically(1)) {
+                    Handler handler = new Handler();
+                    handler.postDelayed(new Runnable() {
+                        public void run() {
+                            if(!isSearch) {
+                                if (!isLoadMore) {
+                                    isLoadMore = true;
+                                    if (currentPage <= totalPages) {
+                                        getMoviesListApiCall(currentPage);
+                                    }
+                                }
+                            }
+                        }
+                    }, 1000);
+                }
+            }
+        });
+        floatingActionButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                showSearchDialog();
+            }
+        });
+        getMoviesListApiCall(currentPage);
     }
 
     void getMoviesListApiCall(int page) {
-        Log.e("MAIN", "call api");
-        Call<JsonObject> call = new RestAdapter().getRestInterface()
+        getMoviesCall = new RestAdapter().getRestInterface()
                 .getNowPlaying(Constants.API_KEY, Constants.LANG, String.valueOf(page));
-        new HttpServerBackend(MainActivity.this).getData(call, new HttpServerBackend.ResponseListener() {
+        getMoviesCall.enqueue(new Callback<JsonObject>() {
             @Override
-            public void onReturn(boolean success, JsonObject data, int message) {
-                super.onReturn(success, data, message);
-                if(!isSearch) {
-                    if (success) {
-                        totalPages = data.get("total_pages").getAsInt();
-                        JsonArray results = data.get("results").getAsJsonArray();
-                        for (int i = 0; i < results.size(); i++) {
-                            Movie movie = new Movie();
-                            JsonObject movieJson = results.get(i).getAsJsonObject();
-                            movie.id = movieJson.get("id").getAsInt();
-                            movie.name = movieJson.get("title").getAsString();
-                            movie.posterUrl = !movieJson.get("poster_path").isJsonNull() ? movieJson.get("poster_path").getAsString() : null;
-                            movie.popularity = movieJson.get("popularity").getAsLong();
-                            moviesList.add(movie);
-                        }
-                        currentPage = currentPage + 1;
-                        isLoadMore = false;
-                        loadingLayout.setVisibility(View.GONE);
-                        recyclerView.setVisibility(View.VISIBLE);
-                        rcAdapter.notifyDataSetChanged();
-                    } else {
-                        showSnackBar();
+            public void onResponse(Call<JsonObject> call, Response<JsonObject> response) {
+                if(response.isSuccessful()){
+                    totalPages = response.body().get("total_pages").getAsInt();
+                    JsonArray results = response.body().get("results").getAsJsonArray();
+                    for (int i = 0; i < results.size(); i++) {
+                        Movie movie = new Movie();
+                        JsonObject movieJson = results.get(i).getAsJsonObject();
+                        movie.id = movieJson.get("id").getAsInt();
+                        movie.name = movieJson.get("title").getAsString();
+                        movie.posterUrl = !movieJson.get("poster_path").isJsonNull() ? movieJson.get("poster_path").getAsString() : null;
+                        movie.popularity = movieJson.get("popularity").getAsLong();
+                        moviesList.add(movie);
                     }
-                }
+                    currentPage = currentPage + 1;
+                    loadingLayout.setVisibility(View.GONE);
+                    recyclerView.setVisibility(View.VISIBLE);
+                    rcAdapter.notifyDataSetChanged();
+                    isLoadMore = false;
+                }else showSnackBar();
+            }
+
+            @Override
+            public void onFailure(Call<JsonObject> call, Throwable t) {
+                showSnackBar();
             }
         });
     }
@@ -179,21 +192,22 @@ public class MainActivity extends AppCompatActivity {
         });
     }
     void search(String text){
-        Log.e("SEARCH",text);
         isSearch = true;
         loadingLayout.setVisibility(View.VISIBLE);
         recyclerView.setVisibility(View.INVISIBLE);
+        if(getMoviesCall.isExecuted()){
+            getMoviesCall.cancel();
+        }
         Call<JsonObject> call = new RestAdapter().getRestInterface()
                 .search(Constants.API_KEY, Constants.LANG, "1",text);
-        new HttpServerBackend(MainActivity.this).getData(call, new HttpServerBackend.ResponseListener() {
+        call.enqueue(new Callback<JsonObject>() {
             @Override
-            public void onReturn(boolean success, JsonObject data, int message) {
-                super.onReturn(success, data, message);
-                if (success) {
-                    Log.e("SEARCH","succ");
-                    if(data.get("total_results").getAsInt()>0) {
-                        JsonArray results = data.get("results").getAsJsonArray();
-                        ArrayList<Movie> searchList = new ArrayList<Movie>();
+            public void onResponse(Call<JsonObject> call, Response<JsonObject> response) {
+                if(response.isSuccessful()){
+                    Log.e("SRHRSLT",response.body().toString());
+                    searchList.clear();
+                    if(response.body().get("total_results").getAsInt()>0) {
+                        JsonArray results = response.body().get("results").getAsJsonArray();
                         for (int i = 0; i < results.size(); i++) {
                             Movie movie = new Movie();
                             JsonObject movieJson = results.get(i).getAsJsonObject();
@@ -205,13 +219,16 @@ public class MainActivity extends AppCompatActivity {
                         }
                         loadingLayout.setVisibility(View.GONE);
                         recyclerView.setVisibility(View.VISIBLE);
-                        rcAdapter = new HomeViewAdapter(MainActivity.this, searchList, NowPlayingApplication.getLocalPrefInstance().getImageBaseUrl(),
-                                NowPlayingApplication.getLocalPrefInstance().getImageSize());
-                        recyclerView.setAdapter(rcAdapter);
+                        rcAdapter.setMovieArrayList(searchList);
+                        rcAdapter.notifyDataSetChanged();
+                        Log.e("LOG","here"+searchList.size());
                     }else noMovieFound();
-                } else {
-                    showSnackBar();
-                }
+                }else showSnackBar();
+            }
+
+            @Override
+            public void onFailure(Call<JsonObject> call, Throwable t) {
+                showSnackBar();
             }
         });
     }
@@ -230,10 +247,11 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if(isLoadMore){
-            isLoadMore = false;
-            recreate();
+        if(isSearch){
+            isSearch = false;
+            initializeRecyclerView();
+        }else {
+            super.onBackPressed();
         }
-        super.onBackPressed();
     }
 }
